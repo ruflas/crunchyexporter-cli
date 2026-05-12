@@ -59,6 +59,12 @@ class HistoryStore:
                     s.last_watched_at = ep.watched_at
                 if s.first_watched_at is None or ep.watched_at < s.first_watched_at:
                     s.first_watched_at = ep.watched_at
+
+        # Movies store episode_number=0 — treat as 1 episode completed
+        for s in summaries.values():
+            if s.max_episode == 0 and s.total_watched > 0:
+                s.max_episode = 1
+
         return list(summaries.values())
 
     @property
