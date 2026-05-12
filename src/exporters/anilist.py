@@ -19,11 +19,12 @@ query ($search: String) {
 """
 
 _UPSERT_MUTATION = """
-mutation ($mediaId: Int, $status: MediaListStatus, $progress: Int) {
-  SaveMediaListEntry(mediaId: $mediaId, status: $status, progress: $progress) {
+mutation ($mediaId: Int, $status: MediaListStatus, $progress: Int, $completedAt: FuzzyDateInput) {
+  SaveMediaListEntry(mediaId: $mediaId, status: $status, progress: $progress, completedAt: $completedAt) {
     id
     status
     progress
+    completedAt { year month day }
   }
 }
 """
@@ -89,6 +90,17 @@ class AniListExporter(BaseExporter):
             return "COMPLETED"
         return "CURRENT"
 
+    @staticmethod
+    def _fuzzy_date(iso: str | None) -> dict | None:
+        if not iso:
+            return None
+        try:
+            from datetime import datetime
+            dt = datetime.fromisoformat(iso.replace("Z", "+00:00"))
+            return {"year": dt.year, "month": dt.month, "day": dt.day}
+        except Exception:
+            return None
+
     def export(self, series: list[SeriesSummary]) -> ExportResult:
         result = ExportResult()
         for s in series:
@@ -98,11 +110,14 @@ class AniListExporter(BaseExporter):
                 continue
             try:
                 status = self._determine_status(s, media.get("episodes"))
-                self._gql(_UPSERT_MUTATION, {
+                variables = {
                     "mediaId": media["id"],
                     "status": status,
                     "progress": s.max_episode,
-                })
+                }
+                if status == "COMPLETED":
+                    variables["completedAt"] = self._fuzzy_date(s.last_watched_at)
+                self._gql(_UPSERT_MUTATION, variables)
                 result.updated.append(s.series_title)
             except Exception as e:
                 result.failed.append((s.series_title, str(e)))

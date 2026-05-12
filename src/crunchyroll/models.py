@@ -43,6 +43,7 @@ class SeriesSummary:
     series_title: str
     episodes_watched: list[int] = field(default_factory=list)
     max_episode: int = 0
+    last_watched_at: Optional[str] = None  # ISO-8601 date of most recent episode
 
     @property
     def total_watched(self) -> int:
