@@ -4,6 +4,13 @@
 
 <h1 align="center">CrunchyExporter</h1>
 
+<p align="center">
+  <a href="LICENSE"><img src="https://img.shields.io/github/license/ruflas/CrunchyExporter" alt="License"></a>
+  <a href="https://github.com/ruflas/CrunchyExporter/releases"><img src="https://img.shields.io/github/v/release/ruflas/CrunchyExporter" alt="Release"></a>
+  <img src="https://img.shields.io/badge/python-3.11%2B-blue" alt="Python">
+  <a href="https://github.com/ruflas/CrunchyExporter/releases/latest"><img src="https://img.shields.io/github/downloads/ruflas/CrunchyExporter/total" alt="Downloads"></a>
+</p>
+
 <p align="center">Fetches your Crunchyroll watch history and exports it to <b>AniList</b>, <b>MyAnimeList</b>, and a local <b>MAL-compatible XML</b> file.</p>
 
 Exports include watch progress, series status (watching/completed), and real start/finish dates from your Crunchyroll history.
