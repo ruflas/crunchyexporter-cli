@@ -2,6 +2,8 @@
 
 Fetches your Crunchyroll watch history and exports it to **AniList**, **MyAnimeList**, and a local **MAL-compatible XML** file.
 
+Exports include watch progress, series status (watching/completed), and real start/finish dates from your Crunchyroll history.
+
 ## Requirements
 
 - Python 3.11+
@@ -27,11 +29,11 @@ cp config.example.yaml config.yaml
 
 ## Step 1 — Get your Crunchyroll session cookie
 
-CrunchyExporter authenticates using the `etp_rt` session cookie from your browser. No password is stored.
+CrunchyExporter authenticates using the `etp_rt` session cookie from your browser. No password is stored or required.
 
 1. Open [crunchyroll.com](https://www.crunchyroll.com) and log in
 2. Press `F12` to open DevTools
-3. Go to **Application** tab (Chrome/Edge) or **Storage** tab (Firefox)
+3. Go to the **Application** tab (Chrome/Edge) or **Storage** tab (Firefox)
 4. In the left panel expand **Cookies → https://www.crunchyroll.com**
 5. Find the row named `etp_rt` and copy its **Value**
 
@@ -60,6 +62,8 @@ Sync complete. 1513 new episodes added. Total: 1513 episodes across 28 series.
 
 History is saved to `data/history.json`. Re-running `fetch` only adds new episodes — it never duplicates.
 
+> **Note:** The `etp_rt` cookie expires when your browser session ends. If `fetch` starts failing with a 401 error, just grab a fresh cookie from DevTools.
+
 ---
 
 ## Step 2 — View your history
@@ -68,7 +72,7 @@ History is saved to `data/history.json`. Re-running `fetch` only adds new episod
 python src/main.py status
 ```
 
-Shows a table with each series, how many episodes were watched, and the highest episode number seen.
+Shows a table with each series, number of episodes watched, and the highest episode number.
 
 ---
 
@@ -82,15 +86,24 @@ python src/main.py export --target xml
 
 Generates `data/animelist.xml`. Import it at:
 - MyAnimeList: [myanimelist.net/import.php](https://myanimelist.net/import.php)
-- AniList: [anilist.co/settings/import](https://anilist.co/settings/import) → select MAL format
+- AniList: [anilist.co/settings/import](https://anilist.co/settings/import) — select MAL format
 - Kitsu and most other tracking sites
 
-### Option B: AniList API (recommended, most accurate)
+> **Note:** The XML does not include MAL IDs (Crunchyroll doesn't provide them). MAL and AniList resolve entries by title on import.
 
-1. Go to [anilist.co/settings/developer](https://anilist.co/settings/developer) and click **Create new client**
-2. Fill in any name and set **Redirect URL** to exactly: `https://anilist.co/api/v2/oauth/pin`
-3. Copy the **Client ID** and add it to `config.yaml`:
+---
 
+### Option B: AniList API
+
+Syncs progress, status and real completion dates directly via the AniList API.
+
+**1. Create an API client**
+- Go to [anilist.co/settings/developer](https://anilist.co/settings/developer)
+- Click **Create new client**
+- Set **Redirect URL** to exactly: `https://anilist.co/api/v2/oauth/pin`
+- Copy the **Client ID**
+
+**2. Add it to `config.yaml`**
 ```yaml
 exporters:
   anilist:
@@ -98,15 +111,14 @@ exporters:
     access_token: ""
 ```
 
-4. Run the export — it will print an authorization URL:
-
+**3. Run the export**
 ```bash
 python src/main.py export --target anilist
 ```
 
-5. Open the URL, authorize the app, and copy the `access_token` from the redirect URL
-6. Paste it into `config.yaml`:
+The script prints an authorization URL. Open it, click **Authorize**, and AniList will redirect you to a page showing your `access_token`. Copy it.
 
+**4. Save the token**
 ```yaml
 exporters:
   anilist:
@@ -114,29 +126,53 @@ exporters:
     access_token: "eyJ..."
 ```
 
-7. Run the export again — from now on it will update directly without asking for the URL
+From now on the export runs without any browser interaction.
+
+---
 
 ### Option C: MyAnimeList API
 
-1. Go to [myanimelist.net/apiconfig](https://myanimelist.net/apiconfig) and create a new app
-2. Set the redirect URI to `http://localhost`
-3. Add your `client_id` to `config.yaml`:
+Syncs progress, status, start date and finish date directly via the MAL API.
 
+**1. Create an API client**
+- Go to [myanimelist.net/apiconfig](https://myanimelist.net/apiconfig)
+- Click **Create ID**
+- Fill in the required fields:
+  - **App Type**: `web` — required for OAuth. This also gives you a Client Secret.
+  - **App Redirect URL**: `http://localhost`
+  - **Purpose of Use**: `hobbyist`
+- Submit and copy both the **Client ID** and **Client Secret**
+
+**2. Add them to `config.yaml`**
 ```yaml
 exporters:
   mal:
-    client_id: "your_mal_client_id"
+    client_id: "your_client_id"
+    client_secret: "your_client_secret"
     access_token: ""
 ```
 
-4. Run the export — it will walk you through the OAuth flow automatically:
-
+**3. Run the export**
 ```bash
 python src/main.py export --target mal
 ```
 
-5. Open the printed URL, authorize, paste the code back into the terminal
-6. Save the resulting `access_token` in `config.yaml` to skip the flow next time
+The script prints an authorization URL. Open it and click **Allow**. MAL will redirect you to `http://localhost/?code=XXXX` — the page won't load, that's expected. Copy the `code=` value from the browser's address bar and paste it into the terminal.
+
+**4. Save the token**
+
+The script will display the obtained `access_token`. Add it to `config.yaml`:
+```yaml
+exporters:
+  mal:
+    client_id: "your_client_id"
+    client_secret: "your_client_secret"
+    access_token: "the_token_shown_in_terminal"
+```
+
+From now on the export runs without any browser interaction.
+
+---
 
 ### Export all targets at once
 
@@ -157,7 +193,7 @@ storage:
 crunchyroll:
   etp_rt: ""              # Session cookie from browser (see Step 1)
   client_id: ""           # Leave blank to use built-in default
-  client_secret: ""       # Leave blank (public client, no secret)
+  client_secret: ""       # Leave blank (public client, no secret needed)
 
 exporters:
   mal_xml:
@@ -169,6 +205,7 @@ exporters:
 
   mal:
     client_id: ""
+    client_secret: ""     # Required for web app type
     access_token: ""
 ```
 
@@ -180,22 +217,25 @@ exporters:
 CR no longer supports email/password login via the API. Use the `etp_rt` cookie method described in Step 1.
 
 **`Login failed (400): missing_required_field`**
-The `etp_rt` value is missing or empty. Make sure you copied the full cookie value.
+The `etp_rt` value is missing or empty. Make sure you copied the full cookie value from DevTools.
 
-**`Login failed (400): invalid_client` on AniList**
-The `client_id` in `config.yaml` is missing or wrong. Create the app at [anilist.co/settings/developer](https://anilist.co/settings/developer) and make sure the redirect URL is exactly `https://anilist.co/api/v2/oauth/pin`.
+**`fetch` returns 401 after working before**
+The `etp_rt` cookie expired. Log into Crunchyroll again and copy a fresh value from DevTools.
 
-**History fetch returns 403**
-The content API base URL must be `beta-api.crunchyroll.com`, not `www.crunchyroll.com`. This is already correct in the current code.
+**`invalid_client` error on AniList**
+The `client_id` in `config.yaml` is wrong, or the redirect URL in your AniList app is not exactly `https://anilist.co/api/v2/oauth/pin`.
 
-**History fetch returns `invalid_value` on `page` field**
-Pagination starts at page 1, not 0. This is already fixed in the current code.
+**MAL authorization page shows 400 Bad Request**
+Your MAL app type is set to `other`. Change it to `web` in [myanimelist.net/apiconfig](https://myanimelist.net/apiconfig) — only `web` type supports OAuth authorization code flow.
 
-**Some series not found on AniList/MAL**
-Crunchyroll uses different titles than AniList/MAL for some series. The exporter automatically tries a normalized version of the title as a fallback. If a series still fails, check the exact title used on AniList/MAL and create a manual entry.
+**MAL token exchange fails with `Failed to verify code_verifier`**
+This is a known MAL quirk — their PKCE implementation uses the `plain` method, not S256. This is already handled correctly in the current code.
 
-**`etp_rt` stops working after a few days**
-The cookie expires with your browser session. Log into Crunchyroll again and repeat Step 1 to get a fresh value.
+**Some series not found on AniList or MAL**
+Crunchyroll sometimes uses different titles than AniList/MAL. The exporter automatically retries with a normalized title as fallback. If a series still fails, add it manually on the tracking site.
+
+**One Piece or other long-running series matched to a movie**
+The exporter prefers TV/ONA/OVA results over movies when searching. If a wrong match still occurs, correct it manually on the tracking site.
 
 ---
 

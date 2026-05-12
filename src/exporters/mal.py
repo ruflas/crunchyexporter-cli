@@ -42,10 +42,9 @@ class MALExporter(BaseExporter):
         self.session = requests.Session()
         self.session.headers.update({"Authorization": f"Bearer {access_token}"})
 
-    # Prefer these types over movies/specials when multiple results match
     _SERIES_TYPES = {"tv", "ona", "ova"}
 
-    def search_anime(self, title: str) -> dict | None:
+    def search_anime(self, series_id: str, title: str) -> dict | None:
         resp = self.session.get(
             f"{MAL_API_BASE}/anime",
             params={"q": title, "limit": 5, "fields": "id,title,num_episodes,media_type"},
@@ -55,7 +54,6 @@ class MALExporter(BaseExporter):
         items = [item["node"] for item in resp.json().get("data", [])]
         if not items:
             return None
-        # Prefer TV/ONA/OVA over movies and specials
         for item in items:
             if item.get("media_type", "").lower() in self._SERIES_TYPES:
                 return item
@@ -98,7 +96,7 @@ class MALExporter(BaseExporter):
     def export(self, series: list[SeriesSummary]) -> ExportResult:
         result = ExportResult()
         for s in series:
-            anime = self.search_anime(s.series_title)
+            anime = self.search_anime(s.series_id, s.series_title)
             if not anime:
                 result.failed.append((s.series_title, "Not found on MyAnimeList"))
                 continue

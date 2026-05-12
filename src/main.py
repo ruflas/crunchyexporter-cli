@@ -228,5 +228,124 @@ def _print_result(name: str, result):
         console.print(f"  [red]FAIL[/red] {title}: {reason}")
 
 
+@cli.command()
+@click.option("--target", "-t",
+              type=click.Choice(["anilist", "mal", "xml", "all"]),
+              default="all", show_default=True,
+              help="Export targets to include in the sync.")
+@click.pass_context
+def sync(ctx, target):
+    """Fetch new history from Crunchyroll then export in one step.
+
+    \b
+    Requires etp_rt set in config.yaml (unattended use, no prompts).
+    Intended for scheduled/automated runs.
+
+    \b
+    EXAMPLES:
+      python src/main.py sync
+      python src/main.py sync --target anilist
+    """
+    cfg = ctx.obj["config"]
+    cr_cfg = cfg.get("crunchyroll", {})
+    etp_rt = cr_cfg.get("etp_rt", "")
+    if not etp_rt:
+        console.print("[red]sync requires etp_rt set in config.yaml[/red]")
+        raise SystemExit(1)
+
+    ctx.invoke(fetch, etp_rt=etp_rt, replace=False)
+    ctx.invoke(export, target=target)
+
+
+@cli.command()
+@click.option("--time", "run_at", default="08:00", show_default=True,
+              help="Time to run daily in HH:MM format.")
+@click.option("--target", "-t",
+              type=click.Choice(["anilist", "mal", "xml", "all"]),
+              default="all", show_default=True,
+              help="Export targets.")
+@click.option("--remove", is_flag=True, default=False,
+              help="Remove the scheduled task instead of creating it.")
+@click.pass_context
+def schedule(ctx, run_at, target, remove):
+    """Register a daily auto-sync task in Windows Task Scheduler or cron.
+
+    \b
+    Requires etp_rt set in config.yaml before scheduling.
+
+    \b
+    EXAMPLES:
+      python src/main.py schedule                      (daily at 08:00)
+      python src/main.py schedule --time 20:00         (daily at 20:00)
+      python src/main.py schedule --remove             (delete the task)
+    """
+    import sys
+    import platform
+    import subprocess
+    from pathlib import Path
+
+    task_name = "CrunchyExporter"
+    project_dir = Path(__file__).parent.parent.resolve()
+    python = sys.executable
+    config_path = ctx.obj.get("config_path", "config.yaml")
+    cmd = f'"{python}" "{project_dir / "src" / "main.py"}" -c "{config_path}" sync --target {target}'
+
+    if platform.system() == "Windows":
+        _schedule_windows(task_name, cmd, run_at, remove)
+    else:
+        _schedule_cron(cmd, run_at, remove)
+
+
+def _schedule_windows(task_name: str, cmd: str, run_at: str, remove: bool):
+    import subprocess
+    if remove:
+        result = subprocess.run(
+            ["schtasks", "/Delete", "/TN", task_name, "/F"],
+            capture_output=True, text=True
+        )
+        if result.returncode == 0:
+            console.print(f"[green]Task '{task_name}' removed.[/green]")
+        else:
+            console.print(f"[red]Could not remove task:[/red] {result.stderr.strip()}")
+        return
+
+    result = subprocess.run(
+        ["schtasks", "/Create",
+         "/TN", task_name,
+         "/TR", cmd,
+         "/SC", "DAILY",
+         "/ST", run_at,
+         "/F"],
+        capture_output=True, text=True
+    )
+    if result.returncode == 0:
+        console.print(f"[green]Scheduled:[/green] '{task_name}' runs daily at {run_at}.")
+        console.print(f"  Command: {cmd}")
+    else:
+        console.print(f"[red]Failed to create task:[/red] {result.stderr.strip()}")
+
+
+def _schedule_cron(cmd: str, run_at: str, remove: bool):
+    import subprocess
+    hour, minute = run_at.split(":")
+    cron_entry = f"{minute} {hour} * * * {cmd}  # CrunchyExporter"
+
+    result = subprocess.run(["crontab", "-l"], capture_output=True, text=True)
+    existing = result.stdout if result.returncode == 0 else ""
+    lines = [l for l in existing.splitlines() if "CrunchyExporter" not in l]
+
+    if remove:
+        new_crontab = "\n".join(lines) + "\n"
+        subprocess.run(["crontab", "-"], input=new_crontab, text=True)
+        console.print("[green]CrunchyExporter cron entry removed.[/green]")
+        return
+
+    lines.append(cron_entry)
+    new_crontab = "\n".join(lines) + "\n"
+    subprocess.run(["crontab", "-"], input=new_crontab, text=True)
+    console.print(f"[green]Cron job added:[/green] runs daily at {run_at}.")
+    console.print(f"  {cron_entry}")
+
+
 if __name__ == "__main__":
     cli()

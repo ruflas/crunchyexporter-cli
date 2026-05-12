@@ -18,6 +18,17 @@ query ($search: String) {
 }
 """
 
+_ID_QUERY = """
+query ($id: Int) {
+  Media(id: $id, type: ANIME) {
+    id
+    title { romaji english native }
+    episodes
+    status
+  }
+}
+"""
+
 _UPSERT_MUTATION = """
 mutation ($mediaId: Int, $status: MediaListStatus, $progress: Int, $completedAt: FuzzyDateInput) {
   SaveMediaListEntry(mediaId: $mediaId, status: $status, progress: $progress, completedAt: $completedAt) {
@@ -70,8 +81,7 @@ class AniListExporter(BaseExporter):
             raise ValueError(data["errors"][0]["message"])
         return data["data"]
 
-    def search_anime(self, title: str) -> tuple[dict | None, str | None]:
-        """Returns (media, error_message). Tries original title then normalized."""
+    def search_anime(self, series_id: str, title: str) -> tuple[dict | None, str | None]:
         for candidate in dict.fromkeys([title, _normalize(title)]):
             try:
                 data = self._gql(_SEARCH_QUERY, {"search": candidate})
@@ -82,7 +92,7 @@ class AniListExporter(BaseExporter):
                 return None, str(e)
             except Exception as e:
                 return None, str(e)
-            time.sleep(0.6)  # stay within 90 req/min
+            time.sleep(0.6)
         return None, "No match found"
 
     def _determine_status(self, series: SeriesSummary, total_episodes: int | None) -> str:
@@ -104,7 +114,7 @@ class AniListExporter(BaseExporter):
     def export(self, series: list[SeriesSummary]) -> ExportResult:
         result = ExportResult()
         for s in series:
-            media, err = self.search_anime(s.series_title)
+            media, err = self.search_anime(s.series_id, s.series_title)
             if not media:
                 result.failed.append((s.series_title, err or "Not found"))
                 continue
