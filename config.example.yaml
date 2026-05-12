@@ -43,4 +43,5 @@ exporters:
   # 4. Paste the resulting token below to skip the OAuth flow next time.
   mal:
     client_id: ""
+    client_secret: ""
     access_token: ""

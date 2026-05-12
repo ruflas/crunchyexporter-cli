@@ -54,8 +54,11 @@ class HistoryStore:
                 s.episodes_watched.append(ep_num)
             if ep_num > s.max_episode:
                 s.max_episode = ep_num
-            if ep.watched_at and (s.last_watched_at is None or ep.watched_at > s.last_watched_at):
-                s.last_watched_at = ep.watched_at
+            if ep.watched_at:
+                if s.last_watched_at is None or ep.watched_at > s.last_watched_at:
+                    s.last_watched_at = ep.watched_at
+                if s.first_watched_at is None or ep.watched_at < s.first_watched_at:
+                    s.first_watched_at = ep.watched_at
         return list(summaries.values())
 
     @property

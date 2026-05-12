@@ -203,15 +203,18 @@ def _export_mal(cfg: dict, summaries):
     token = mal_cfg.get("access_token")
     if not token:
         client_id = mal_cfg.get("client_id", "")
+        client_secret = mal_cfg.get("client_secret", "")
         if not client_id:
             console.print("[yellow]MAL:[/yellow] Set [bold]exporters.mal.client_id[/bold] in config.yaml first.")
             return
         url, verifier = mal_auth_url(client_id)
-        console.print(f"\n[yellow]MAL OAuth:[/yellow] Open this URL to authorize:\n  [link]{url}[/link]")
-        code = click.prompt("Paste the authorization code from the redirect URL")
+        console.print(f"\n[yellow]MAL OAuth:[/yellow] Open this URL to authorize:\n  {url}")
+        console.print("After authorizing, MAL redirects to http://localhost/?code=XXXX")
+        console.print("The page won't load — that's normal. Copy the [bold]code=[/bold] value from the URL bar.")
+        code = click.prompt("Paste the authorization code")
         with console.status("Exchanging code for token..."):
-            token = mal_exchange(client_id, code, verifier)
-        console.print(f"[green]Token obtained.[/green] Add to config: exporters.mal.access_token: {token[:20]}...")
+            token = mal_exchange(client_id, code, verifier, client_secret)
+        console.print(f"[green]Token obtained.[/green] Save it in config.yaml under exporters.mal.access_token")
 
     with console.status("[bold]Exporting to MyAnimeList..."):
         result = MALExporter(token).export(summaries)
