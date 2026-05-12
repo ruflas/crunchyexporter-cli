@@ -25,7 +25,7 @@ def load_config(path: str) -> dict:
         return yaml.safe_load(f) or {}
 
 
-@click.group()
+@click.group(context_settings={"help_option_names": ["-h", "--help"]})
 @click.option("--config", "-c", default="config.yaml", show_default=True, help="Path to config file.")
 @click.pass_context
 def cli(ctx, config):
@@ -38,16 +38,23 @@ def cli(ctx, config):
 
 
 @cli.command()
-@click.option("--etp-rt", default=None, help="Value of the etp_rt cookie from your browser session.")
-@click.option("--replace", is_flag=True, default=False, help="Replace existing history instead of merging.")
+@click.option("--etp-rt", default=None, help="Value of the etp_rt cookie from your browser session. Can also be set in config.yaml under crunchyroll.etp_rt.")
+@click.option("--replace", is_flag=True, default=False, help="Replace ALL existing local history instead of merging (incremental by default).")
 @click.pass_context
 def fetch(ctx, etp_rt, replace):
-    """Fetch watch history from Crunchyroll and save locally.
+    """Fetch your Crunchyroll watch history and save it locally as JSON.
 
-    Requires the etp_rt cookie from your browser:
-      1. Log into crunchyroll.com
-      2. DevTools → Application → Cookies → https://www.crunchyroll.com
-      3. Copy the value of 'etp_rt' and pass it via --etp-rt or config.yaml
+    \b
+    HOW TO GET THE etp_rt COOKIE:
+      1. Log into crunchyroll.com in your browser
+      2. Open DevTools (F12) -> Application tab -> Cookies -> https://www.crunchyroll.com
+      3. Copy the value of the 'etp_rt' cookie
+
+    \b
+    EXAMPLES:
+      python src/main.py fetch --etp-rt "your-cookie-value"
+      python src/main.py fetch                   (reads etp_rt from config.yaml)
+      python src/main.py fetch --replace         (full resync, discards local cache)
     """
     cfg = ctx.obj["config"]
     store_path = cfg.get("storage", {}).get("path", "data/history.json")
@@ -90,7 +97,12 @@ def fetch(ctx, etp_rt, replace):
 @cli.command()
 @click.pass_context
 def status(ctx):
-    """Show a summary of the locally stored watch history."""
+    """Show a summary of locally stored watch history.
+
+    \b
+    Displays a table with each series, number of episodes watched,
+    and the highest episode number seen. Run 'fetch' first.
+    """
     cfg = ctx.obj["config"]
     store_path = cfg.get("storage", {}).get("path", "data/history.json")
     store = HistoryStore(Path(store_path))
@@ -115,10 +127,32 @@ def status(ctx):
 @click.option("--target", "-t",
               type=click.Choice(["anilist", "mal", "xml", "all"]),
               default="all", show_default=True,
-              help="Export destination.")
+              help="Where to export: anilist, mal, xml (local file), or all three at once.")
 @click.pass_context
 def export(ctx, target):
-    """Export watch history to anime tracking sites."""
+    """Export watch history to AniList, MyAnimeList and/or a local XML file.
+
+    \b
+    TARGETS:
+      anilist   Updates your AniList anime list via API (requires token in config.yaml)
+      mal       Updates your MyAnimeList via API (requires OAuth setup in config.yaml)
+      xml       Generates data/animelist.xml, importable at myanimelist.net/import.php
+      all       Runs all three targets (default)
+
+    \b
+    FIRST-TIME SETUP:
+      AniList:  Create app at anilist.co/settings/developer, then run with --target anilist
+                and follow the printed instructions to get your access token.
+      MAL:      Create app at myanimelist.net/apiconfig, add client_id to config.yaml,
+                then run with --target mal and follow the OAuth flow.
+      XML:      No setup needed, works out of the box.
+
+    \b
+    EXAMPLES:
+      python src/main.py export                    (export to all targets)
+      python src/main.py export --target xml       (local XML only, no auth needed)
+      python src/main.py export --target anilist   (AniList only)
+    """
     cfg = ctx.obj["config"]
     store_path = cfg.get("storage", {}).get("path", "data/history.json")
     store = HistoryStore(Path(store_path))
