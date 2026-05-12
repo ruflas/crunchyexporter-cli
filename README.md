@@ -305,3 +305,42 @@ CrunchyExporter/
 ├── config.example.yaml
 └── requirements.txt
 ```
+
+---
+
+## Contributing
+
+Contributions are welcome. Here's how to get started:
+
+**1. Fork the repo and clone it**
+```bash
+git clone https://github.com/your-username/CrunchyExporter.git
+cd CrunchyExporter
+pip install -r requirements.txt
+cp config.example.yaml config.yaml
+```
+
+**2. Make your changes**
+
+The codebase is straightforward — each exporter lives in `src/exporters/`, CR auth and history fetching in `src/crunchyroll/`, and the CLI commands in `src/main.py`.
+
+**3. Test manually**
+```bash
+python src/main.py fetch
+python src/main.py status
+python src/main.py export --target xml
+```
+
+**4. Open a pull request** with a clear description of what you changed and why.
+
+### Good areas to contribute
+
+- **New exporters** — Kitsu, Anime-Planet, Shikimori
+- **Better title matching** — fuzzy search or manual override mappings
+- **Movie detection** — improve handling of films vs series
+- **Bug reports** — if a series fails to match or exports incorrectly, open an issue with the series title and the error
+
+### Please avoid
+
+- Breaking the existing CLI interface without discussion
+- Adding dependencies that aren't strictly necessary
