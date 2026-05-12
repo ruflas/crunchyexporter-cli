@@ -1,6 +1,10 @@
-# CrunchyExporter
+<p align="center">
+  <img src="crunchyexporterlogo.png" alt="CrunchyExporter" width="300"/>
+</p>
 
-Fetches your Crunchyroll watch history and exports it to **AniList**, **MyAnimeList**, and a local **MAL-compatible XML** file.
+<h1 align="center">CrunchyExporter</h1>
+
+<p align="center">Fetches your Crunchyroll watch history and exports it to <b>AniList</b>, <b>MyAnimeList</b>, and a local <b>MAL-compatible XML</b> file.</p>
 
 Exports include watch progress, series status (watching/completed), and real start/finish dates from your Crunchyroll history.
 
