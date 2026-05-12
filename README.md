@@ -182,6 +182,48 @@ python src/main.py export
 
 ---
 
+## Step 4 — Auto-sync (optional)
+
+### One-shot: fetch + export in a single command
+
+```bash
+python src/main.py sync                      # fetch + export all targets
+python src/main.py sync --target anilist     # fetch + export AniList only
+```
+
+Requires `etp_rt` set in `config.yaml` (no interactive prompts).
+
+### Schedule a daily background task
+
+```bash
+# Register a daily task at 08:00 (default)
+python src/main.py schedule
+
+# Choose a different time
+python src/main.py schedule --time 20:00
+
+# Only sync to a specific target
+python src/main.py schedule --target anilist --time 09:00
+
+# Remove the scheduled task
+python src/main.py schedule --remove
+```
+
+On **Windows** this creates a Windows Task Scheduler entry (`schtasks`).  
+On **Linux/Mac** it adds an entry to your crontab.
+
+Verify it was created (Windows):
+```powershell
+schtasks /Query /TN CrunchyExporter
+```
+
+Run it manually to test:
+```powershell
+schtasks /Run /TN CrunchyExporter
+```
+
+---
+
 ## Config reference
 
 ```yaml
