@@ -16,6 +16,7 @@ from src.storage.history_store import HistoryStore
 from src.exporters.anilist import AniListExporter
 from src.exporters.mal import MALExporter, get_auth_url as mal_auth_url, exchange_code as mal_exchange
 from src.exporters.mal_xml import MALXMLExporter
+from src.storage.export_log import ExportLog
 
 console = Console()
 
@@ -111,6 +112,19 @@ def status(ctx):
         console.print("[yellow]No history found. Run [bold]fetch[/bold] first.[/yellow]")
         return
 
+    log = ExportLog()
+    if log.last_export:
+        console.print(f"Last export: {log.last_export}")
+        for target in ("anilist", "mal", "xml"):
+            t = log.get_target(target)
+            if t is None:
+                continue
+            line = f"  {target:8} {t['updated']} updated, {t['skipped']} skipped, {len(t['failed'])} failed"
+            if t["failed"]:
+                line += f"  [red]({', '.join(f[0] for f in t['failed'][:3])}{'...' if len(t['failed']) > 3 else ''})[/red]"
+            console.print(line)
+        console.print()
+
     table = Table(title="Watch History Summary", show_lines=True)
     table.add_column("Series", style="cyan", no_wrap=False)
     table.add_column("Episodes watched", justify="right")
@@ -163,25 +177,27 @@ def export(ctx, target):
 
     summaries = store.series_summaries()
     console.print(f"Exporting {len(summaries)} series...")
+    log = ExportLog()
 
     if target in ("xml", "all"):
-        _export_xml(cfg, summaries)
+        _export_xml(cfg, summaries, log)
 
     if target in ("anilist", "all"):
-        _export_anilist(cfg, summaries)
+        _export_anilist(cfg, summaries, log)
 
     if target in ("mal", "all"):
-        _export_mal(cfg, summaries)
+        _export_mal(cfg, summaries, log)
 
 
-def _export_xml(cfg: dict, summaries):
+def _export_xml(cfg: dict, summaries, log: ExportLog):
     xml_path = cfg.get("exporters", {}).get("mal_xml", {}).get("path", "data/animelist.xml")
     with console.status("[bold]Generating MAL XML..."):
         result = MALXMLExporter(xml_path).export(summaries)
+    log.record("xml", result)
     console.print(f"[green]XML exported:[/green] {xml_path} ({len(result.updated)} series)")
 
 
-def _export_anilist(cfg: dict, summaries):
+def _export_anilist(cfg: dict, summaries, log: ExportLog):
     al_cfg = cfg.get("exporters", {}).get("anilist", {})
     token = al_cfg.get("access_token")
     if not token:
@@ -195,10 +211,11 @@ def _export_anilist(cfg: dict, summaries):
 
     with console.status("[bold]Exporting to AniList..."):
         result = AniListExporter(token).export(summaries)
+    log.record("anilist", result)
     _print_result("AniList", result)
 
 
-def _export_mal(cfg: dict, summaries):
+def _export_mal(cfg: dict, summaries, log: ExportLog):
     mal_cfg = cfg.get("exporters", {}).get("mal", {})
     token = mal_cfg.get("access_token")
     if not token:
@@ -218,6 +235,7 @@ def _export_mal(cfg: dict, summaries):
 
     with console.status("[bold]Exporting to MyAnimeList..."):
         result = MALExporter(token).export(summaries)
+    log.record("mal", result)
     _print_result("MyAnimeList", result)
 
 
