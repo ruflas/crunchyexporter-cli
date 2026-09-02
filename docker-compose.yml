@@ -7,14 +7,16 @@ services:
     container_name: crunchyexporter-cli
     restart: unless-stopped
     volumes:
+      - ./config:/config:ro
       - ./data:/app/data
     environment:
       PYTHONUNBUFFERED: "1"
       CRUNCHY_DAEMON_INTERVAL: "3600"
       CRUNCHY_DAEMON_TARGET: "status"
+      CRUNCHY_CONFIG_PATH: "/config/config.yaml"
     command: ["daemon"]
     healthcheck:
-      test: ["CMD", "python", "src/main.py", "status"]
+      test: ["CMD", "python", "src/main.py", "-c", "/config/config.yaml", "status"]
       interval: 1m
       timeout: 10s
       retries: 3

@@ -36,6 +36,57 @@ On Mac/Linux:
 cp config.example.yaml config.yaml
 ```
 
+## Docker / headless setup
+
+Use this when you want a persistent containerized run instead of a local Python environment.
+
+Create a dedicated Docker config directory:
+
+```bash
+mkdir -p config data
+cp config.example.yaml config/config.yaml
+```
+
+Edit `config/config.yaml` and fill in the values you need:
+- `crunchyroll.etp_rt` for headless fetch/sync
+- `exporters.anilist.*` and/or `exporters.mal.*` if you want API exports
+
+Build and start the container:
+
+```bash
+docker compose up -d --build
+```
+
+Inspect it:
+
+```bash
+docker compose ps
+docker compose logs -f crunchyexporter
+docker exec -it crunchyexporter-cli python src/main.py -c /config/config.yaml status
+```
+
+The compose setup mounts:
+- `./config` -> `/config` for runtime configuration
+- `./data` -> `/app/data` for exported history/XML files
+
+The container starts in a simple headless daemon mode by default and runs `status` on an interval. You can switch the behavior with environment variables in `docker-compose.yml`:
+
+- `CRUNCHY_DAEMON_TARGET=status` -> periodic status checks
+- `CRUNCHY_DAEMON_TARGET=sync` -> periodic fetch + export
+- `CRUNCHY_DAEMON_SYNC_TARGET=xml|anilist|mal|all` -> choose sync target when using `sync`
+- `CRUNCHY_DAEMON_EXPORT_TARGET=xml|anilist|mal|all` -> choose export target when using `export`
+- `CRUNCHY_DAEMON_INTERVAL=3600` -> loop interval in seconds
+
+You can also run one-shot commands without compose:
+
+```bash
+docker build -t crunchyexporter-cli:latest .
+docker run --rm \
+  -v "$PWD/config:/config:ro" \
+  -v "$PWD/data:/app/data" \
+  crunchyexporter-cli:latest status
+```
+
 ---
 
 ## Step 1 — Get your Crunchyroll session cookie
