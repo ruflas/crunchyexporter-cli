@@ -49,16 +49,3 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
-      - name: Tag and push latest (for main branch)
-        if: github.ref == 'refs/heads/main'
-        run: |
-          IMAGE=ghcr.io/${{ github.repository }}
-          # Get the SHA tag from meta output (first tag)
-          SHA_TAG=$(echo "${{ steps.meta.outputs.tags }}" | cut -d, -f1)
-          echo "Tagging $SHA_TAG as latest"
-          docker pull $SHA_TAG
-          docker tag $SHA_TAG $IMAGE:latest
-          docker push $IMAGE:latest
