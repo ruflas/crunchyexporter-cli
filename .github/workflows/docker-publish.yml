@@ -42,21 +42,22 @@ jobs:
             type=ref,event=pr
             type=ref,event=tag
 
-      - name: Set image tags
-        id: tags
-        run: |
-          TAGS="${{ steps.meta.outputs.tags }}"
-          if [ "${{ github.ref }}" = "refs/heads/main" ]; then
-            TAGS="$TAGS,ghcr.io/${{ github.repository }}:latest"
-          fi
-          echo "tags=$TAGS" >> $GITHUB_OUTPUT
-
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
         with:
           context: .
           push: true
-          tags: ${{ steps.tags.outputs.tags }}
+          tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+      - name: Tag and push latest (for main branch)
+        if: github.ref == 'refs/heads/main'
+        run: |
+          IMAGE=ghcr.io/${{ github.repository }}
+          # Get the first tag from the metadata output (the SHA tag)
+          FIRST_TAG=$(echo "${{ steps.meta.outputs.tags }}" | cut -d, -f1)
+          echo "Tagging $FIRST_TAG as latest"
+          docker tag $FIRST_TAG $IMAGE:latest
+          docker push $IMAGE:latest
