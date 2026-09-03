@@ -42,23 +42,21 @@ jobs:
             type=ref,event=pr
             type=ref,event=tag
 
-      - name: Build and push Docker image (SHA/ref tags)
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+      - name: Set image tags
+        id: tags
+        run: |
+          TAGS="${{ steps.meta.outputs.tags }}"
+          if [ "${{ github.ref }}" = "refs/heads/main" ]; then
+            TAGS="$TAGS,ghcr.io/${{ github.repository }}:latest"
+          fi
+          echo "tags=$TAGS" >> $GITHUB_OUTPUT
 
-      - name: Build and push Docker image (latest tag for main)
-        if: github.ref == 'refs/heads/main'
+      - name: Build and push Docker image
         uses: docker/build-push-action@v5
         with:
           context: .
           push: true
-          tags: ghcr.io/${{ github.repository }}:latest
+          tags: ${{ steps.tags.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
