@@ -41,6 +41,7 @@ jobs:
             type=ref,event=branch
             type=ref,event=pr
             type=ref,event=tag
+            type=raw,value=latest,enable={{is_default_branch}}
 
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
@@ -51,13 +52,3 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
-
-      - name: Tag and push latest (for main branch)
-        if: github.ref == 'refs/heads/main'
-        run: |
-          IMAGE=ghcr.io/${{ github.repository }}
-          # Get the first tag from the metadata output (the SHA tag)
-          FIRST_TAG=$(echo "${{ steps.meta.outputs.tags }}" | cut -d, -f1)
-          echo "Tagging $FIRST_TAG as latest"
-          docker tag $FIRST_TAG $IMAGE:latest
-          docker push $IMAGE:latest
