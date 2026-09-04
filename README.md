@@ -244,6 +244,12 @@ docker build -t crunchyexporter-cli .
 docker compose run --rm crunchyexporter
 ```
 
+If `./data` is bind-mounted from the host, make it writable for the pinned container user first:
+
+```bash
+chown -R 1000:1000 data
+```
+
 The compose file mounts `./config` to `/config` and `./data` to `/app/data`, so `config.yaml`, `history.json`, `animelist.xml`, and `export_log.json` persist across runs.
 
 If you prefer host cron, run:

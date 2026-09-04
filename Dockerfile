@@ -23,7 +23,7 @@ COPY src ./src
 COPY config.example.yaml ./config.example.yaml
 
 RUN mkdir -p /app/data \
-    && useradd --system --create-home --home-dir /app --shell /usr/sbin/nologin crunchy \
+    && useradd --uid 1000 --create-home --home-dir /app --shell /usr/sbin/nologin crunchy \
     && chown -R crunchy:root /app
 
 USER crunchy
