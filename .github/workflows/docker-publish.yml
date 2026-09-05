@@ -3,10 +3,10 @@ name: Docker Build & Push to GHCR
 on:
   pull_request:
     branches:
-      - main
+      - master
   push:
     branches:
-      - main
+      - master
 
 jobs:
   build-test:
@@ -31,7 +31,7 @@ jobs:
           cache-to: type=gha,mode=max
 
   publish:
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -60,7 +60,7 @@ jobs:
             type=sha,format=long
             type=ref,event=branch
             type=ref,event=tag
-            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
+            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/master' }}
 
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
