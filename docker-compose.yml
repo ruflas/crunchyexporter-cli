@@ -1,0 +1,10 @@
+services:
+  crunchyexporter:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: crunchyexporter-cli:feature-docker-headless
+    volumes:
+      - ./config:/config:ro
+      - ./data:/app/data
+    command: ["-c", "/config/config.yaml", "sync"]

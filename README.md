@@ -233,6 +233,36 @@ Run it manually to test:
 schtasks /Run /TN CrunchyExporter
 ```
 
+### Docker
+
+For a containerized/headless setup:
+
+```bash
+mkdir -p config data
+cp config.example.yaml config/config.yaml
+docker build -t crunchyexporter-cli .
+docker compose run --rm crunchyexporter
+```
+
+If `./data` is bind-mounted from the host, make it writable for the pinned container user first:
+
+```bash
+chown -R 1000:1000 data
+```
+
+The compose file mounts `./config` to `/config` and `./data` to `/app/data`, so `config.yaml`, `history.json`, `animelist.xml`, and `export_log.json` persist across runs.
+
+If you prefer host cron, run:
+
+```bash
+docker run --rm \
+  -v "$PWD/config:/config:ro" \
+  -v "$PWD/data:/app/data" \
+  crunchyexporter-cli -c /config/config.yaml sync
+```
+
+> **Note:** Initial auth still requires a browser outside the container to obtain `etp_rt`, and the first AniList/MAL OAuth token exchange also needs a browser step.
+
 ---
 
 ## Config reference
