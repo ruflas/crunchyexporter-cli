@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.1.1] — 2026-09-27
+
+### Fixed
+- **History fetch failing past ~900 episodes** ([#4](https://github.com/ruflas/crunchyexporter-cli/issues/4)):
+  Crunchyroll's `watch-history` endpoint now paginates with an opaque cursor
+  returned in `meta.next_page`, and rejects numeric `page` values with a
+  `400 invalid_value` once the history is long enough. The fetcher now follows
+  `next_page` until it is empty.
+  (Thanks to [@Clickercrazy](https://github.com/Clickercrazy) for the report.)
+- `fetch` no longer crashes with a traceback when the history download fails
+  midway: it shows the error and keeps the episodes downloaded so far.
+
 ## [1.1.0] — 2026-05-19
 
 ### Fixed
