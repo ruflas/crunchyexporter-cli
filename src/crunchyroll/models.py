@@ -41,6 +41,7 @@ class Episode:
 class SeriesSummary:
     series_id: str
     series_title: str
+    season_number: int = 1
     episodes_watched: list[int] = field(default_factory=list)
     max_episode: int = 0
     first_watched_at: Optional[str] = None  # ISO-8601 date of earliest episode
@@ -49,3 +50,10 @@ class SeriesSummary:
     @property
     def total_watched(self) -> int:
         return len(self.episodes_watched)
+
+    @property
+    def display_title(self) -> str:
+        """Human-readable label that keeps seasons of the same series apart."""
+        if self.season_number > 1:
+            return f"{self.series_title} (Season {self.season_number})"
+        return self.series_title

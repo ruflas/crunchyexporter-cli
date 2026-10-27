@@ -25,7 +25,7 @@ class MALXMLExporter(BaseExporter):
         for s in series:
             node = ET.SubElement(root, "anime")
             ET.SubElement(node, "series_animedb_id").text = ""
-            ET.SubElement(node, "series_title").text = s.series_title
+            ET.SubElement(node, "series_title").text = s.display_title
             ET.SubElement(node, "series_type").text = "TV"
             ET.SubElement(node, "series_episodes").text = "0"
             ET.SubElement(node, "my_id").text = "0"
@@ -36,7 +36,7 @@ class MALXMLExporter(BaseExporter):
             status = "Completed" if s.max_episode > 0 else "Plan to Watch"
             ET.SubElement(node, "my_status").text = status
             ET.SubElement(node, "update_on_import").text = "1"
-            result.updated.append(s.series_title)
+            result.updated.append(s.display_title)
 
         self.output_path.parent.mkdir(parents=True, exist_ok=True)
         tree = ET.ElementTree(root)

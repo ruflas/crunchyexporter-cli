@@ -140,8 +140,8 @@ def status(ctx):
     table.add_column("Episodes watched", justify="right")
     table.add_column("Max episode", justify="right")
 
-    for s in sorted(store.series_summaries(), key=lambda x: x.series_title):
-        table.add_row(s.series_title, str(s.total_watched), str(s.max_episode))
+    for s in sorted(store.series_summaries(), key=lambda x: (x.series_title, x.season_number)):
+        table.add_row(s.display_title, str(s.total_watched), str(s.max_episode))
 
     console.print(table)
     console.print(f"\nLast sync: {store.last_sync or 'never'}")

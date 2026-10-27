@@ -43,12 +43,16 @@ class HistoryStore:
     def series_summaries(self) -> list[SeriesSummary]:
         summaries: dict[str, SeriesSummary] = {}
         for ep in self.all_episodes():
-            if ep.series_id not in summaries:
-                summaries[ep.series_id] = SeriesSummary(
+            # One summary per season: Crunchyroll keeps every season under the
+            # same series_id, while AniList/MAL track each season as its own entry.
+            key = f"{ep.series_id}::{ep.season_number}"
+            if key not in summaries:
+                summaries[key] = SeriesSummary(
                     series_id=ep.series_id,
                     series_title=ep.series_title,
+                    season_number=ep.season_number,
                 )
-            s = summaries[ep.series_id]
+            s = summaries[key]
             ep_num = int(ep.episode_number)
             if ep_num not in s.episodes_watched:
                 s.episodes_watched.append(ep_num)
