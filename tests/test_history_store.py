@@ -30,6 +30,36 @@ def test_series_summaries_groups_by_series_id(tmp_path):
     assert {s.series_id for s in summaries} == {"A", "B"}
 
 
+def test_series_summaries_splits_seasons(tmp_path):
+    eps = [
+        make_ep(series_id="K", season_number=1, episode_id="E1", episode_number=12.0),
+        make_ep(series_id="K", season_number=6, episode_id="E2", episode_number=10.0),
+        make_ep(series_id="K", season_number=6, episode_id="E3", episode_number=4.0),
+    ]
+    summaries = {s.season_number: s for s in make_store(tmp_path, eps).series_summaries()}
+    assert set(summaries) == {1, 6}
+    assert summaries[1].max_episode == 12
+    assert summaries[6].max_episode == 10
+    assert summaries[6].total_watched == 2
+    assert all(s.series_id == "K" for s in summaries.values())
+
+
+def test_series_summaries_season_dates_independent(tmp_path):
+    eps = [
+        make_ep(season_number=1, episode_id="E1", watched_at="2025-01-01T00:00:00Z"),
+        make_ep(season_number=2, episode_id="E2", watched_at="2026-05-01T00:00:00Z"),
+    ]
+    summaries = {s.season_number: s for s in make_store(tmp_path, eps).series_summaries()}
+    assert summaries[1].last_watched_at == "2025-01-01T00:00:00Z"
+    assert summaries[2].first_watched_at == "2026-05-01T00:00:00Z"
+
+
+def test_display_title():
+    from src.crunchyroll.models import SeriesSummary
+    assert SeriesSummary("K", "Kingdom").display_title == "Kingdom"
+    assert SeriesSummary("K", "Kingdom", season_number=6).display_title == "Kingdom (Season 6)"
+
+
 def test_series_summaries_max_episode(tmp_path):
     eps = [
         make_ep(episode_id="E1", episode_number=3.0),

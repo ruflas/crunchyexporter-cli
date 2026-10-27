@@ -43,6 +43,9 @@ class MALExporter(BaseExporter):
         self.session.headers.update({"Authorization": f"Bearer {access_token}"})
 
     _SERIES_TYPES = {"tv", "ona", "ova"}
+    # Stricter set for walking the sequel chain: OVAs linked as sequels are
+    # usually side stories, not the next season. Mirrors AniList's _SEASON_FORMATS.
+    _SEASON_TYPES = {"tv", "ona"}
 
     def search_anime(self, series_id: str, title: str) -> dict | None:
         resp = self.session.get(
@@ -63,6 +66,47 @@ class MALExporter(BaseExporter):
             if item.get("media_type", "").lower() in self._SERIES_TYPES:
                 return item
         return items[0]
+
+    def _get_anime(self, anime_id: int, fields: str) -> dict:
+        resp = self.session.get(
+            f"{MAL_API_BASE}/anime/{anime_id}",
+            params={"fields": fields},
+            timeout=10,
+        )
+        if not resp.ok:
+            raise RuntimeError(f"MAL lookup of {anime_id} failed {resp.status_code}: {resp.text}")
+        return resp.json()
+
+    def _next_season(self, anime_id: int) -> dict | None:
+        """Return the TV/ONA sequel of anime_id, or None if the chain ends."""
+        related = self._get_anime(anime_id, "related_anime").get("related_anime") or []
+        sequel_ids = [
+            r["node"]["id"] for r in related
+            if r.get("relation_type") == "sequel" and r.get("node", {}).get("id")
+        ]
+        # related_anime nodes carry no media_type, so fetch each candidate:
+        # movies and specials are frequently linked as sequels too.
+        for sid in sequel_ids:
+            details = self._get_anime(sid, "id,title,num_episodes,media_type")
+            if details.get("media_type", "").lower() in self._SEASON_TYPES:
+                return details
+        return None
+
+    def resolve_season(self, anime: dict, season_number: int) -> dict:
+        """
+        Walk the sequel chain from the season-1 match to the requested season.
+        Raises instead of guessing when the chain is shorter than expected.
+        """
+        current = anime
+        for hop in range(1, season_number):
+            nxt = self._next_season(current["id"])
+            if not nxt:
+                raise RuntimeError(
+                    f"Season {season_number} not found on MyAnimeList: sequel chain from "
+                    f"anime {anime['id']} ends at season {hop}"
+                )
+            current = nxt
+        return current
 
     def _determine_status(self, series: SeriesSummary, total_episodes: int) -> str:
         if total_episodes and series.max_episode >= total_episodes:
@@ -100,15 +144,23 @@ class MALExporter(BaseExporter):
 
     def export(self, series: list[SeriesSummary]) -> ExportResult:
         result = ExportResult()
+        base_cache: dict[tuple[str, str], dict | None] = {}
         for s in series:
+            label = s.display_title
             try:
-                anime = self.search_anime(s.series_id, s.series_title)
+                # All seasons of a series share the same season-1 lookup.
+                key = (s.series_id, s.series_title)
+                if key not in base_cache:
+                    base_cache[key] = self.search_anime(s.series_id, s.series_title)
+                anime = base_cache[key]
                 if not anime:
-                    result.failed.append((s.series_title, "Not found on MyAnimeList"))
+                    result.failed.append((label, "Not found on MyAnimeList"))
                     continue
+                if s.season_number > 1:
+                    anime = self.resolve_season(anime, s.season_number)
                 status = self._determine_status(s, anime.get("num_episodes", 0))
                 self._update_list(anime["id"], status, s)
-                result.updated.append(s.series_title)
+                result.updated.append(label)
             except Exception as e:
-                result.failed.append((s.series_title, str(e)))
+                result.failed.append((label, str(e)))
         return result

@@ -88,3 +88,12 @@ def test_export_result_contains_all_titles(tmp_path):
     result = MALXMLExporter(out).export(summaries)
     assert len(result.updated) == 3
     assert all(f"Anime {i}" in result.updated for i in range(3))
+
+
+def test_later_season_title_includes_season(tmp_path):
+    from src.exporters.mal_xml import MALXMLExporter
+    import xml.etree.ElementTree as ET
+    s = SeriesSummary(series_id="K", series_title="Kingdom", season_number=6, max_episode=10)
+    out = tmp_path / "list.xml"
+    MALXMLExporter(out).export([s])
+    assert ET.parse(out).getroot().find("anime/series_title").text == "Kingdom (Season 6)"
